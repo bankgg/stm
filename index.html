@@ -14,13 +14,16 @@
       href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
     />
     <style>
-      /* Additional custom styles */
       .answer {
         color: green;
         display: none;
       }
       .active {
         font-weight: bold;
+      }
+      /* Add margin under the Show Passage button */
+      #showPassageBtn {
+        margin-bottom: 20px;
       }
     </style>
   </head>
@@ -93,7 +96,6 @@
           <div id="questionsContainer">
             <!-- Generated questions with answer inputs will appear here -->
           </div>
-          <!-- Row for half-width Show Answers and Start New Test buttons -->
           <div class="row mt-3">
             <div class="col-6">
               <button id="showAnswersBtn" class="btn btn-info btn-block">
@@ -106,7 +108,6 @@
               </button>
             </div>
           </div>
-          <!-- Row for the full-width Show Passage button -->
           <div class="row mt-3">
             <div class="col">
               <button id="showPassageBtn" class="btn btn-dark btn-block">
@@ -114,7 +115,6 @@
               </button>
             </div>
           </div>
-          <!-- Hidden container for reviewing the passage -->
           <div id="passageReview" class="border p-3 mt-3" style="display: none">
             <!-- Passage text will be inserted here when Show Passage is clicked -->
           </div>
@@ -127,12 +127,12 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
     <script>
       $(document).ready(function () {
-        var testParams = {}; // holds current test parameters
-        var currentPassage = ""; // store the generated passage text
-        var currentPattern = null; // "pattern1" or "pattern2"
-        var questionMappings = []; // holds selected questions for current test
+        var testParams = {};
+        var currentPassage = "";
+        var currentPattern = null;
+        var questionMappings = [];
         var timer;
-        var testDuration = 3 * 60 * 1000; // 3 minutes
+        var testDuration = 3 * 60 * 1000; // For testing; change to 180000 for 3 minutes
 
         // ----- Utility Functions -----
         function randomInt(min, max) {
@@ -152,7 +152,23 @@
           }
           return array;
         }
-        // --- More varying taxi route: 2-3 parts using random prefixes ---
+        // --- New: Generate Airport (returns an object with code and city) ---
+        function generateAirport() {
+          var airports = [
+            { code: "BKK", city: "Bangkok" },
+            { code: "CPH", city: "Copenhagen" },
+            { code: "LAX", city: "Los Angeles" },
+            { code: "JFK", city: "New York" },
+            { code: "SYD", city: "Sydney" },
+            { code: "DXB", city: "Dubai" },
+            { code: "FRA", city: "Frankfurt" },
+            { code: "LHR", city: "London" },
+            { code: "HND", city: "Tokyo" },
+            { code: "SIN", city: "Singapore" },
+          ];
+          return randomElement(airports);
+        }
+        // --- Generate taxi route: 2-3 parts using random prefixes ---
         function generateTaxiRoute() {
           var prefixes = ["T", "C", "R", "X", "P"];
           var numParts = randomInt(2, 3);
@@ -218,32 +234,29 @@
           var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
           return randomElement(letters) + randomInt(1, 30);
         }
-        function generateAirportCode() {
-          var codes = [
-            "BKK",
-            "CPH",
-            "LAX",
-            "JFK",
-            "SYD",
-            "DXB",
-            "FRA",
-            "LHR",
-            "HND",
-            "SIN",
-          ];
-          return randomElement(codes);
+        // --- Updated generateAirportCode(): Now use generateAirport() to return formatted string
+        function generateAirportCodeFormatted() {
+          var airport = generateAirport();
+          return airport.code + " (" + airport.city + ")";
         }
+        // --- For internal comparisons, we may also want the airport object
+        // --- Generate Runway
         function generateRunway() {
           var num = randomInt(1, 36);
           var letter = randomElement(["L", "R", "C"]);
           return num + letter;
         }
+        // --- Updated generateTime(): now uses minutes in multiples of 5.
         function generateTime() {
           var hour = randomInt(1, 12);
-          var minute = randomInt(0, 59);
-          var ampm = randomElement(["AM", "PM"]);
+          var minutesArray = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+          var minute = randomElement(minutesArray);
           return (
-            hour + "." + (minute < 10 ? "0" + minute : minute) + " " + ampm
+            hour +
+            "." +
+            (minute < 10 ? "0" + minute : minute) +
+            " " +
+            randomElement(["AM", "PM"])
           );
         }
         function generateDate() {
@@ -266,14 +279,55 @@
           var year = randomInt(2000, 2020);
           return month + " " + day + ", " + year;
         }
-        function generateHeading() {
-          return randomInt(1, 360);
+        // --- Generate flight level values (multiples of 10 from 250 to 410)
+        function generateFlightLevelArray() {
+          var levels = [];
+          for (var i = 250; i <= 410; i += 10) {
+            levels.push(i);
+          }
+          return levels;
         }
-        function generateFlightLevel() {
-          return randomInt(200, 400);
+        // --- NEW: Generate a flight level value (e.g., "FL330")
+        function generateFlightLevelValue() {
+          var levels = generateFlightLevelArray();
+          return "FL" + randomElement(levels);
         }
-        // --- More stopover cities ---
-        function generateStopovers() {
+        // --- Generate climb and descent flight levels together.
+        function generateClimbAndDescentLevels() {
+          var levels = generateFlightLevelArray();
+          var climbIndex = randomInt(1, levels.length - 1);
+          var climbLevel = levels[climbIndex];
+          var descentIndex = randomInt(0, climbIndex - 1);
+          var descentLevel = levels[descentIndex];
+          return {
+            climb: "FL" + climbLevel,
+            descent: "FL" + descentLevel,
+          };
+        }
+        // --- Generate a heading (multiples of 10 from 010 to 360)
+        function generateHeadingMultiple() {
+          var heading = randomInt(1, 36) * 10;
+          return heading < 100 ? "0" + heading : heading.toString();
+        }
+        // --- Generate altitude for non-FL altitudes (multiples of 1000 ft, minimum 3000 ft)
+        function generateAltitude() {
+          return randomInt(3, 10) * 1000;
+        }
+        // --- Generate flight time duration in multiples of 5 minutes.
+        function generateDuration() {
+          var hrs = randomInt(1, 10);
+          var minutesArray = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+          var mins = randomElement(minutesArray);
+          if (Math.random() < 0.5) {
+            return (
+              hrs + " HOURS AND " + (mins < 10 ? "0" + mins : mins) + " MINUTES"
+            );
+          } else {
+            return hrs + ":" + (mins < 10 ? "0" + mins : mins);
+          }
+        }
+        // --- NEW: Generate Stopovers for Pattern #2 excluding origin and destination.
+        function generateStopoversExcluding(originCity, destinationCity) {
           var cities = [
             "SINGAPORE",
             "CALCUTTA",
@@ -291,70 +345,61 @@
             "BEIJING",
             "SHANGHAI",
           ];
+          // Exclude originCity and destinationCity (case-insensitive)
+          cities = cities.filter(function (city) {
+            return (
+              city.toUpperCase() !== originCity.toUpperCase() &&
+              city.toUpperCase() !== destinationCity.toUpperCase()
+            );
+          });
           var numStops = randomInt(2, 3);
           var stops = [];
-          while (stops.length < numStops) {
+          while (stops.length < numStops && cities.length > 0) {
             var city = randomElement(cities);
-            if (stops.indexOf(city) === -1) stops.push(city);
+            if (stops.indexOf(city) === -1) {
+              stops.push(city);
+            }
+            cities = cities.filter(function (c) {
+              return c !== city;
+            });
           }
           return stops.join(", ");
-        }
-        // --- Additional generators ---
-        function generateFlightCode() {
-          var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-          return (
-            randomElement(letters) +
-            randomElement(letters) +
-            randomInt(100, 999)
-          );
-        }
-        function generateTemperature(min, max) {
-          return randomInt(min, max);
-        }
-        function generateDuration() {
-          if (Math.random() < 0.5) {
-            var hrs = randomInt(1, 10);
-            var mins = randomInt(0, 59);
-            return (
-              hrs + " HOURS AND " + (mins < 10 ? "0" + mins : mins) + " MINUTES"
-            );
-          } else {
-            var hrs = randomInt(1, 10);
-            var mins = randomInt(0, 59);
-            return hrs + ":" + (mins < 10 ? "0" + mins : mins);
-          }
         }
 
         // ----- Passage Generation for Pattern #1 -----
         function generatePattern1Test() {
           var params = {};
-          params.flightCode = generateFlightCode();
-          params.gate = generateGate();
-          params.origin = generateAirportCode();
-          params.destination = generateAirportCode();
-          while (params.destination === params.origin) {
-            params.destination = generateAirportCode();
+          // Use generateAirport() to get origin and destination objects.
+          var originObj = generateAirport();
+          var destinationObj = generateAirport();
+          while (destinationObj.code === originObj.code) {
+            destinationObj = generateAirport();
           }
+          params.origin = originObj.code + " (" + originObj.city + ")";
+          params.destination =
+            destinationObj.code + " (" + destinationObj.city + ")";
           params.taxiRoute = generateTaxiRoute();
+          params.gate = generateGate();
           params.departureRunway = generateRunway();
           params.aircraftType = generateAircraftType();
           params.bcPassengers = randomInt(10, 50);
           params.economyPassengers = randomInt(100, 300);
           params.crewCount = randomInt(10, 20);
-          params.takeOffWeight = randomFloat(300, 400, 1);
-          params.fuelWeight = randomFloat(50, 120, 1);
+          params.takeOffWeight = randomFloat(60, 350, 1);
+          // Fuel weight section removed.
           params.departureTime = generateTime();
           params.departureDate = generateDate();
-          params.atcVector = generateHeading();
-          params.flightLevel = generateFlightLevel();
+          params.atcVector = generateHeadingMultiple();
+          var levels = generateClimbAndDescentLevels();
+          params.flightLevel = levels.climb;
+          params.descendLevel = levels.descent;
           params.vomitSeat = generateSeat();
           params.crewSeat = generateSeat();
           params.doctorSeat = generateSeat();
           params.country = generateNationality();
           params.passengerAge = randomInt(20, 80);
-          // Randomize gender of the affected passenger
           params.passengerGender = randomElement(["man", "woman"]);
-          // More passing countries
+          // For Pattern #1, use the city names from the airport objects for comparison.
           params.passingCountry = randomElement([
             "Sweden",
             "Norway",
@@ -366,15 +411,12 @@
             "Netherlands",
             "Belgium",
           ]);
-          params.descendLevel = generateFlightLevel();
           params.landingTime = generateTime();
           params.landingRunway = generateRunway();
-          params.windDirection = randomInt(0, 360);
+          params.windDirection = generateHeadingMultiple();
           params.windSpeed = randomInt(5, 20);
-          params.visibility = randomInt(5, 15);
           params.parkingGate = generateGate();
-          params.outsideTemp = generateTemperature(10, 30);
-          // More bin contents for cargo
+          params.outsideTemp = randomInt(10, 30);
           params.bin1Content = randomElement([
             "fruits",
             "electronics",
@@ -395,7 +437,7 @@
             "supplies",
             "hardware",
           ]);
-          params.bin1Temp = generateTemperature(0, 10);
+          params.bin1Temp = randomInt(0, 10);
 
           // Derived parameters
           params.totalPeople =
@@ -403,9 +445,8 @@
           params.origin_destination =
             params.origin + " to " + params.destination;
           params.wind =
-            params.windDirection + " degrees, " + params.windSpeed + " knots";
+            params.windDirection + "° at " + params.windSpeed + " knots";
 
-          // --- Random symptom for the affected passenger ---
           var symptoms = [
             "vomited",
             "felt dizzy",
@@ -415,7 +456,6 @@
             "felt lightheaded",
           ];
           params.symptom = randomElement(symptoms);
-          // --- Random occupation for the helper ---
           var occupations = [
             "doctor",
             "nurse",
@@ -429,7 +469,6 @@
             params.helperOccupation === "doctor"
               ? "provided medicine"
               : "provided assistance";
-          // --- Random reason for descent ---
           var reasons = [
             "due to opposite traffic",
             "due to turbulence",
@@ -440,36 +479,34 @@
           ];
           params.descentReason = randomElement(reasons);
 
-          // Build the passage text (HTML format)
           var passage = "";
           passage +=
+            "This is flight " +
             params.flightCode +
-            " Park Bay " +
+            " at parking bay " +
             params.gate +
-            " Flight from " +
+            " from " +
             params.origin +
             " to " +
             params.destination +
             ", taxi out via " +
             params.taxiRoute +
-            "-Runway " +
+            " for taking off on runway " +
             params.departureRunway +
             ". ";
           passage +=
             "The type of aircraft is " +
             params.aircraftType +
-            " with Passengers BC (Business) " +
+            " with " +
             params.bcPassengers +
-            ", EY (Economy) " +
+            " passengers in business class, " +
             params.economyPassengers +
-            " and " +
+            " in economy class, and " +
             params.crewCount +
             " crew members. ";
           passage +=
             "The take-off weight was " +
             params.takeOffWeight +
-            " tons, fuel weight was " +
-            params.fuelWeight +
             " tons.<br><br>";
           passage +=
             "Departure time was " +
@@ -480,7 +517,7 @@
           passage +=
             "After departure the ATC vector heading was " +
             params.atcVector +
-            ", and the aircraft climbed to flight level " +
+            ", and the aircraft climbed to " +
             params.flightLevel +
             ". ";
           passage +=
@@ -510,7 +547,7 @@
           passage +=
             "When the aircraft passed " +
             params.passingCountry +
-            ", the control ATC instructed a descent to flight level " +
+            ", the control ATC instructed a descent to " +
             params.descendLevel +
             " " +
             params.descentReason +
@@ -521,14 +558,7 @@
             " local time on runway " +
             params.landingRunway +
             ". ";
-          passage +=
-            "The wind was " +
-            params.windDirection +
-            " degrees at " +
-            params.windSpeed +
-            " knots with " +
-            params.visibility +
-            " km visibility. ";
+          passage += "The wind was " + params.wind + ". ";
           passage +=
             "The aircraft then parked at gate " + params.parkingGate + ". ";
           passage +=
@@ -547,14 +577,29 @@
         // ----- Passage Generation for Pattern #2 -----
         function generatePattern2Test() {
           var params = {};
-          params.flightNumber = "QF " + randomInt(100, 999);
-          params.aircraftType = generateAircraftType().toUpperCase();
-          params.origin = generateAirportCode();
-          params.destination = generateAirportCode();
-          while (params.destination === params.origin) {
-            params.destination = generateAirportCode();
+          var originObj = generateAirport();
+          var destinationObj = generateAirport();
+          while (destinationObj.code === originObj.code) {
+            destinationObj = generateAirport();
           }
-          params.stopovers = generateStopovers();
+          // Format origin and destination as "CODE (CITY)" and convert to uppercase.
+          params.origin = (
+            originObj.code +
+            " (" +
+            originObj.city +
+            ")"
+          ).toUpperCase();
+          params.destination = (
+            destinationObj.code +
+            " (" +
+            destinationObj.city +
+            ")"
+          ).toUpperCase();
+          // For stopovers, exclude the real city names (use the uppercase version for comparison if needed)
+          params.stopovers = generateStopoversExcluding(
+            originObj.city,
+            destinationObj.city
+          );
           params.time1 = generateDuration();
           params.time2 = generateDuration();
           params.time3 = generateDuration();
@@ -563,7 +608,6 @@
           params.businessPassengers = randomInt(30, 60);
           params.economyPassengers = randomInt(150, 250);
           params.crewCount = randomInt(10, 20);
-          // Crew change stopover (first in list)
           params.changeCrewStop = params.stopovers.split(", ")[0];
           params.businessOff = randomInt(5, 30);
           params.businessOn = randomInt(5, 30);
@@ -577,15 +621,15 @@
           params.dubaiFirstClassOn = randomInt(1, 10);
           params.dubaiBusinessOff = randomInt(1, 10);
           params.takeoffRunway = generateRunway();
-          params.headingAltitude = randomInt(2000, 3000);
-          params.atcHeading = randomInt(1, 360);
-          params.finalLevel = randomInt(30000, 40000);
-
-          // Derived parameter
+          params.headingAltitude = generateAltitude();
+          params.atcHeading = generateHeadingMultiple();
+          params.finalLevel = generateFlightLevelValue();
           params.origin_destination =
             params.origin + " TO " + params.destination;
-
-          // Build the passage text in uppercase
+          // Set aircraft type (in uppercase)
+          params.aircraftType = generateAircraftType().toUpperCase();
+          // Set flight number before using it.
+          params.flightNumber = "QF " + randomInt(100, 999);
           var passage = "";
           passage += "THIS IS FLIGHT " + params.flightNumber + ". ";
           passage +=
@@ -672,12 +716,14 @@
           passage +=
             "WHEN REACHING " +
             params.headingAltitude +
-            ", THEY ARE VECTORED TO TURN RIGHT HEADING " +
+            " THEY ARE VECTORED TO TURN RIGHT HEADING " +
             params.atcHeading +
-            " FOR INTERCEPTING THE AIRWAY AND ARE CLEARED TO CLIMB TO MAINTAIN " +
+            " FOR INTERCEPTING THE AIRWAY ";
+          passage +=
+            "AND ARE CLEARED TO CLIMB TO MAINTAIN " +
             params.finalLevel +
-            " FT FOR THE FINAL LEVEL.";
-
+            " FOR THE FINAL LEVEL.";
+          params.finalFirstClass = params.firstClass + params.dubaiFirstClassOn;
           return { passage: passage, params: params };
         }
 
@@ -712,7 +758,8 @@
             key: "atcVector",
           },
           {
-            question: "To which flight level did the aircraft climb?",
+            question:
+              "To which flight level did the aircraft originally climb?",
             key: "flightLevel",
           },
           { question: "What was the departure time?", key: "departureTime" },
@@ -722,6 +769,10 @@
           },
           { question: "Which seat did the helper occupy?", key: "doctorSeat" },
           {
+            question: "Which seat did the noticed crew member occupy?",
+            key: "crewSeat",
+          },
+          {
             question: "What is the nationality of the affected passenger?",
             key: "country",
           },
@@ -730,7 +781,7 @@
             key: "passengerAge",
           },
           {
-            question: "At which flight level did the descent begin?",
+            question: "At which flight level did the ATC ask to descend?",
             key: "descendLevel",
           },
           {
@@ -782,7 +833,7 @@
           {
             question:
               "How many first-class passengers were there at the final destination?",
-            key: "firstClass",
+            key: "finalFirstClass",
           },
         ];
 
@@ -816,12 +867,11 @@
           }
           testParams = testData.params;
           currentPassage = testData.passage;
-          // Select questions randomly from the pool (approximately 80% of available questions)
           var questionsPool =
             currentPattern === "pattern1"
               ? pattern1QuestionsPool
               : pattern2QuestionsPool;
-          var numQuestions = Math.floor(0.8 * questionsPool.length);
+          var numQuestions = Math.floor(0.9 * questionsPool.length);
           var shuffled = shuffleArray(questionsPool.slice());
           questionMappings = shuffled.slice(0, numQuestions);
           $("#passageContainer").html(currentPassage);
@@ -852,6 +902,8 @@
               answer = testParams.totalPeople;
             } else if (q.key === "wind") {
               answer = testParams.wind;
+            } else if (q.key === "finalFirstClass") {
+              answer = testParams.finalFirstClass;
             } else {
               answer = testParams[q.key];
             }
@@ -871,7 +923,6 @@
         // ----- Show Answers Button -----
         $("#showAnswersBtn").click(function () {
           $(".answer").show();
-          // Scroll to top after showing answers
           $("html, body").animate({ scrollTop: 0 }, "fast");
         });
 
@@ -894,7 +945,6 @@
           $("#startTimerBtn")
             .prop("disabled", false)
             .text("Start 3 Mins Countdown");
-          // Reset pattern buttons
           currentPattern = null;
           $("#pattern1Btn, #pattern2Btn")
             .removeClass("btn-info active")
