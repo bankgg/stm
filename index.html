@@ -168,9 +168,19 @@
           ];
           return randomElement(airports);
         }
+        // --- Generate Flight Code ---
+        function generateFlightCode() {
+          var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+          return (
+            randomElement(letters) +
+            randomElement(letters) +
+            randomInt(100, 999)
+          );
+        }
+
         // --- Generate taxi route: 2-3 parts using random prefixes ---
         function generateTaxiRoute() {
-          var prefixes = ["T", "C", "R", "X", "P"];
+          var prefixes = ["T", "C", "R", "X", "P", "E", "D", "A", "O", "V"];
           var numParts = randomInt(2, 3);
           var parts = [];
           for (var i = 0; i < numParts; i++) {
@@ -182,13 +192,13 @@
         function generateAircraftType() {
           var types = [
             "Airbus A340-300",
+            "Airbus A321neo",
             "Boeing 747-400",
-            "Airbus A380",
-            "Boeing 777",
-            "Boeing 787 Dreamliner",
-            "Airbus A320",
-            "Bombardier CRJ900",
-            "Embraer E190",
+            "Airbus A380-800",
+            "Boeing 777-200",
+            "Boeing 777-300ER",
+            "Boeing 787-9",
+            "Airbus A320-200",
           ];
           return randomElement(types);
         }
@@ -369,6 +379,8 @@
         // ----- Passage Generation for Pattern #1 -----
         function generatePattern1Test() {
           var params = {};
+          // Set flight code
+          params.flightCode = generateFlightCode();
           // Use generateAirport() to get origin and destination objects.
           var originObj = generateAirport();
           var destinationObj = generateAirport();
@@ -399,7 +411,6 @@
           params.country = generateNationality();
           params.passengerAge = randomInt(20, 80);
           params.passengerGender = randomElement(["man", "woman"]);
-          // For Pattern #1, use the city names from the airport objects for comparison.
           params.passingCountry = randomElement([
             "Sweden",
             "Norway",
