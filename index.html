@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Mobile-first -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>Short-Term Memory Test</title>
+    <!-- Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <style>
+      /* Additional custom styles */
+      .answer {
+        color: green;
+        display: none;
+      }
+      .active {
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- START PAGE -->
+    <div id="startPage" class="container mt-4">
+      <!-- Row for pattern selection buttons -->
+      <div class="row">
+        <div class="col-6 p-1">
+          <button
+            type="button"
+            id="pattern1Btn"
+            class="btn btn-outline-info btn-block"
+          >
+            Pattern #1
+          </button>
+        </div>
+        <div class="col-6 p-1">
+          <button
+            type="button"
+            id="pattern2Btn"
+            class="btn btn-outline-info btn-block"
+          >
+            Pattern #2
+          </button>
+        </div>
+      </div>
+      <!-- Row for the Generate button -->
+      <div class="row">
+        <div class="col p-1">
+          <button
+            type="button"
+            id="generateTestBtn"
+            class="btn btn-primary btn-block"
+          >
+            Generate
+          </button>
+        </div>
+      </div>
+      <!-- Test area: Passage + Start button -->
+      <div id="testArea" class="row mt-4" style="display: none">
+        <div class="col">
+          <button id="startTimerBtn" class="btn btn-success btn-block mb-3">
+            Start 3 Mins Countdown
+          </button>
+          <div id="passageContainer" class="border p-3">
+            <!-- Generated passage text will appear here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIME'S UP PAGE -->
+    <div id="timesUpPage" class="container" style="display: none">
+      <div class="d-flex vh-100">
+        <div class="m-auto text-center">
+          <h1>Time's Up!</h1>
+          <button id="answerQuestionsBtn" class="btn btn-primary mt-3">
+            Answer Questions
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUESTIONS PAGE -->
+    <div id="questionsPage" class="container mt-4" style="display: none">
+      <div class="row">
+        <div class="col">
+          <h2>Questions</h2>
+          <div id="questionsContainer">
+            <!-- Generated questions with answer inputs will appear here -->
+          </div>
+          <!-- Row for half-width Show Answers and Start New Test buttons -->
+          <div class="row mt-3">
+            <div class="col-6">
+              <button id="showAnswersBtn" class="btn btn-info btn-block">
+                Show Answers
+              </button>
+            </div>
+            <div class="col-6">
+              <button id="startNewTestBtn" class="btn btn-secondary btn-block">
+                Start New Test
+              </button>
+            </div>
+          </div>
+          <!-- Row for the full-width Show Passage button -->
+          <div class="row mt-3">
+            <div class="col">
+              <button id="showPassageBtn" class="btn btn-dark btn-block">
+                Show Passage
+              </button>
+            </div>
+          </div>
+          <!-- Hidden container for reviewing the passage -->
+          <div id="passageReview" class="border p-3 mt-3" style="display: none">
+            <!-- Passage text will be inserted here when Show Passage is clicked -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- jQuery and Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <script>
+      $(document).ready(function () {
+        var testParams = {}; // holds current test parameters
+        var currentPassage = ""; // store the generated passage text
+        var currentPattern = null; // "pattern1" or "pattern2"
+        var questionMappings = []; // holds selected questions for current test
+        var timer;
+        var testDuration = 3000; // 3 minutes
+
+        // ----- Utility Functions -----
+        function randomInt(min, max) {
+          return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        function randomFloat(min, max, decimals) {
+          var num = Math.random() * (max - min) + min;
+          return num.toFixed(decimals);
+        }
+        function randomElement(arr) {
+          return arr[Math.floor(Math.random() * arr.length)];
+        }
+        function shuffleArray(array) {
+          for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+          }
+          return array;
+        }
+        // --- More varying taxi route: 2-3 parts using random prefixes ---
+        function generateTaxiRoute() {
+          var prefixes = ["T", "C", "R", "X", "P"];
+          var numParts = randomInt(2, 3);
+          var parts = [];
+          for (var i = 0; i < numParts; i++) {
+            parts.push(randomElement(prefixes) + randomInt(1, 20));
+          }
+          return parts.join("-");
+        }
+        // --- More aircraft types ---
+        function generateAircraftType() {
+          var types = [
+            "Airbus A340-300",
+            "Boeing 747-400",
+            "Airbus A380",
+            "Boeing 777",
+            "Boeing 787 Dreamliner",
+            "Airbus A320",
+            "Bombardier CRJ900",
+            "Embraer E190",
+          ];
+          return randomElement(types);
+        }
+        // --- More seat letters ---
+        function generateSeat() {
+          var letters = [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H",
+            "I",
+            "J",
+            "K",
+            "L",
+            "M",
+            "N",
+          ];
+          return randomElement(letters) + randomInt(1, 30);
+        }
+        // --- More nationalities ---
+        function generateNationality() {
+          var nationalities = [
+            "Australian",
+            "British",
+            "American",
+            "Canadian",
+            "German",
+            "Swedish",
+            "French",
+            "Japanese",
+            "Brazilian",
+            "Indian",
+            "Chinese",
+            "Russian",
+          ];
+          return randomElement(nationalities);
+        }
+        function generateGate() {
+          var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+          return randomElement(letters) + randomInt(1, 30);
+        }
+        function generateAirportCode() {
+          var codes = [
+            "BKK",
+            "CPH",
+            "LAX",
+            "JFK",
+            "SYD",
+            "DXB",
+            "FRA",
+            "LHR",
+            "HND",
+            "SIN",
+          ];
+          return randomElement(codes);
+        }
+        function generateRunway() {
+          var num = randomInt(1, 36);
+          var letter = randomElement(["L", "R", "C"]);
+          return num + letter;
+        }
+        function generateTime() {
+          var hour = randomInt(1, 12);
+          var minute = randomInt(0, 59);
+          var ampm = randomElement(["AM", "PM"]);
+          return (
+            hour + "." + (minute < 10 ? "0" + minute : minute) + " " + ampm
+          );
+        }
+        function generateDate() {
+          var months = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+          ];
+          var month = randomElement(months);
+          var day = randomInt(1, 28);
+          var year = randomInt(2000, 2020);
+          return month + " " + day + ", " + year;
+        }
+        function generateHeading() {
+          return randomInt(1, 360);
+        }
+        function generateFlightLevel() {
+          return randomInt(200, 400);
+        }
+        // --- More stopover cities ---
+        function generateStopovers() {
+          var cities = [
+            "SINGAPORE",
+            "CALCUTTA",
+            "DUBAI",
+            "HONG KONG",
+            "SEOUL",
+            "TOKYO",
+            "PARIS",
+            "AMSTERDAM",
+            "MUMBAI",
+            "MEXICO CITY",
+            "ROME",
+            "ISTANBUL",
+            "LONDON",
+            "BEIJING",
+            "SHANGHAI",
+          ];
+          var numStops = randomInt(2, 3);
+          var stops = [];
+          while (stops.length < numStops) {
+            var city = randomElement(cities);
+            if (stops.indexOf(city) === -1) stops.push(city);
+          }
+          return stops.join(", ");
+        }
+        // --- Additional generators ---
+        function generateFlightCode() {
+          var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+          return (
+            randomElement(letters) +
+            randomElement(letters) +
+            randomInt(100, 999)
+          );
+        }
+        function generateTemperature(min, max) {
+          return randomInt(min, max);
+        }
+        function generateDuration() {
+          if (Math.random() < 0.5) {
+            var hrs = randomInt(1, 10);
+            var mins = randomInt(0, 59);
+            return (
+              hrs + " HOURS AND " + (mins < 10 ? "0" + mins : mins) + " MINUTES"
+            );
+          } else {
+            var hrs = randomInt(1, 10);
+            var mins = randomInt(0, 59);
+            return hrs + ":" + (mins < 10 ? "0" + mins : mins);
+          }
+        }
+
+        // ----- Passage Generation for Pattern #1 -----
+        function generatePattern1Test() {
+          var params = {};
+          params.flightCode = generateFlightCode();
+          params.gate = generateGate();
+          params.origin = generateAirportCode();
+          params.destination = generateAirportCode();
+          while (params.destination === params.origin) {
+            params.destination = generateAirportCode();
+          }
+          params.taxiRoute = generateTaxiRoute();
+          params.departureRunway = generateRunway();
+          params.aircraftType = generateAircraftType();
+          params.bcPassengers = randomInt(10, 50);
+          params.economyPassengers = randomInt(100, 300);
+          params.crewCount = randomInt(10, 20);
+          params.takeOffWeight = randomFloat(300, 400, 1);
+          params.fuelWeight = randomFloat(50, 120, 1);
+          params.departureTime = generateTime();
+          params.departureDate = generateDate();
+          params.atcVector = generateHeading();
+          params.flightLevel = generateFlightLevel();
+          params.vomitSeat = generateSeat();
+          params.crewSeat = generateSeat();
+          params.doctorSeat = generateSeat();
+          params.country = generateNationality();
+          params.passengerAge = randomInt(20, 80);
+          // Randomize gender of the affected passenger
+          params.passengerGender = randomElement(["man", "woman"]);
+          // More passing countries
+          params.passingCountry = randomElement([
+            "Sweden",
+            "Norway",
+            "Denmark",
+            "Finland",
+            "Iceland",
+            "Estonia",
+            "Poland",
+            "Netherlands",
+            "Belgium",
+          ]);
+          params.descendLevel = generateFlightLevel();
+          params.landingTime = generateTime();
+          params.landingRunway = generateRunway();
+          params.windDirection = randomInt(0, 360);
+          params.windSpeed = randomInt(5, 20);
+          params.visibility = randomInt(5, 15);
+          params.parkingGate = generateGate();
+          params.outsideTemp = generateTemperature(10, 30);
+          // More bin contents for cargo
+          params.bin1Content = randomElement([
+            "fruits",
+            "electronics",
+            "clothes",
+            "documents",
+            "toys",
+            "stationery",
+            "souvenirs",
+            "food supplies",
+          ]);
+          params.bin2Content = randomElement([
+            "spare parts",
+            "tools",
+            "medicines",
+            "books",
+            "mechanical parts",
+            "accessories",
+            "supplies",
+            "hardware",
+          ]);
+          params.bin1Temp = generateTemperature(0, 10);
+
+          // Derived parameters
+          params.totalPeople =
+            params.bcPassengers + params.economyPassengers + params.crewCount;
+          params.origin_destination =
+            params.origin + " to " + params.destination;
+          params.wind =
+            params.windDirection + " degrees, " + params.windSpeed + " knots";
+
+          // --- Random symptom for the affected passenger ---
+          var symptoms = [
+            "vomited",
+            "felt dizzy",
+            "complained of a headache",
+            "felt nauseous",
+            "experienced shortness of breath",
+            "felt lightheaded",
+          ];
+          params.symptom = randomElement(symptoms);
+          // --- Random occupation for the helper ---
+          var occupations = [
+            "doctor",
+            "nurse",
+            "flight attendant",
+            "paramedic",
+            "first aid specialist",
+            "medical technician",
+          ];
+          params.helperOccupation = randomElement(occupations);
+          params.helperAction =
+            params.helperOccupation === "doctor"
+              ? "provided medicine"
+              : "provided assistance";
+          // --- Random reason for descent ---
+          var reasons = [
+            "due to opposite traffic",
+            "due to turbulence",
+            "to avoid bad weather",
+            "due to airspace congestion",
+            "for operational reasons",
+            "due to a technical issue",
+          ];
+          params.descentReason = randomElement(reasons);
+
+          // Build the passage text (HTML format)
+          var passage = "";
+          passage +=
+            params.flightCode +
+            " Park Bay " +
+            params.gate +
+            " Flight from " +
+            params.origin +
+            " to " +
+            params.destination +
+            ", taxi out via " +
+            params.taxiRoute +
+            "-Runway " +
+            params.departureRunway +
+            ". ";
+          passage +=
+            "The type of aircraft is " +
+            params.aircraftType +
+            " with Passengers BC (Business) " +
+            params.bcPassengers +
+            ", EY (Economy) " +
+            params.economyPassengers +
+            " and " +
+            params.crewCount +
+            " crew members. ";
+          passage +=
+            "The take-off weight was " +
+            params.takeOffWeight +
+            " tons, fuel weight was " +
+            params.fuelWeight +
+            " tons.<br><br>";
+          passage +=
+            "Departure time was " +
+            params.departureTime +
+            " on " +
+            params.departureDate +
+            ". ";
+          passage +=
+            "After departure the ATC vector heading was " +
+            params.atcVector +
+            ", and the aircraft climbed to flight level " +
+            params.flightLevel +
+            ". ";
+          passage +=
+            "During cruise, the passenger in seat " +
+            params.vomitSeat +
+            " " +
+            params.symptom +
+            " while the crew member in seat " +
+            params.crewSeat +
+            " noticed and called for help. ";
+          passage +=
+            "The " +
+            params.helperOccupation +
+            ", seated at " +
+            params.doctorSeat +
+            ", " +
+            params.helperAction +
+            " for the " +
+            params.country +
+            " passenger who was feeling sick. ";
+          passage +=
+            "The passenger was a " +
+            params.passengerGender +
+            " aged " +
+            params.passengerAge +
+            ".<br><br>";
+          passage +=
+            "When the aircraft passed " +
+            params.passingCountry +
+            ", the control ATC instructed a descent to flight level " +
+            params.descendLevel +
+            " " +
+            params.descentReason +
+            ". ";
+          passage +=
+            "The flight landed at " +
+            params.landingTime +
+            " local time on runway " +
+            params.landingRunway +
+            ". ";
+          passage +=
+            "The wind was " +
+            params.windDirection +
+            " degrees at " +
+            params.windSpeed +
+            " knots with " +
+            params.visibility +
+            " km visibility. ";
+          passage +=
+            "The aircraft then parked at gate " + params.parkingGate + ". ";
+          passage +=
+            "The outside temperature was " + params.outsideTemp + "°C. ";
+          passage +=
+            "Upon opening the cargo door, bin #1 contained " +
+            params.bin1Content +
+            " and bin #2 contained " +
+            params.bin2Content +
+            ". ";
+          passage += "The temperature in bin #1 is " + params.bin1Temp + "°C.";
+
+          return { passage: passage, params: params };
+        }
+
+        // ----- Passage Generation for Pattern #2 -----
+        function generatePattern2Test() {
+          var params = {};
+          params.flightNumber = "QF " + randomInt(100, 999);
+          params.aircraftType = generateAircraftType().toUpperCase();
+          params.origin = generateAirportCode();
+          params.destination = generateAirportCode();
+          while (params.destination === params.origin) {
+            params.destination = generateAirportCode();
+          }
+          params.stopovers = generateStopovers();
+          params.time1 = generateDuration();
+          params.time2 = generateDuration();
+          params.time3 = generateDuration();
+          params.time4 = generateDuration();
+          params.firstClass = randomInt(10, 20);
+          params.businessPassengers = randomInt(30, 60);
+          params.economyPassengers = randomInt(150, 250);
+          params.crewCount = randomInt(10, 20);
+          // Crew change stopover (first in list)
+          params.changeCrewStop = params.stopovers.split(", ")[0];
+          params.businessOff = randomInt(5, 30);
+          params.businessOn = randomInt(5, 30);
+          params.economyOff = randomInt(50, 150);
+          params.economyOn = randomInt(50, 150);
+          var stopsArray = params.stopovers.split(", ");
+          params.dubaiStop =
+            stopsArray.indexOf("DUBAI") !== -1
+              ? "DUBAI"
+              : randomElement(stopsArray);
+          params.dubaiFirstClassOn = randomInt(1, 10);
+          params.dubaiBusinessOff = randomInt(1, 10);
+          params.takeoffRunway = generateRunway();
+          params.headingAltitude = randomInt(2000, 3000);
+          params.atcHeading = randomInt(1, 360);
+          params.finalLevel = randomInt(30000, 40000);
+
+          // Derived parameter
+          params.origin_destination =
+            params.origin + " TO " + params.destination;
+
+          // Build the passage text in uppercase
+          var passage = "";
+          passage += "THIS IS FLIGHT " + params.flightNumber + ". ";
+          passage +=
+            "TYPE OF THE AIRCRAFT IS " +
+            params.aircraftType +
+            ", FROM " +
+            params.origin +
+            " TO " +
+            params.destination +
+            ". ";
+          passage +=
+            "BETWEEN ROUTE, THIS FLIGHT WILL MAKE LANDINGS FOR CHANGING PASSENGERS, AIR CREWS AND REFUELING AT " +
+            params.stopovers +
+            ". ";
+          passage +=
+            "FLIGHT TIME FROM " +
+            params.origin +
+            " TO " +
+            params.stopovers.split(", ")[0] +
+            " IS " +
+            params.time1 +
+            ", ";
+          passage +=
+            "FROM " +
+            params.stopovers.split(", ")[0] +
+            " TO " +
+            (params.stopovers.split(", ")[1] || params.destination) +
+            " IS " +
+            params.time2 +
+            ", ";
+          passage +=
+            "FROM " +
+            (params.stopovers.split(", ")[1] || params.destination) +
+            " TO " +
+            (params.stopovers.split(", ")[2] || params.destination) +
+            " IS " +
+            params.time3 +
+            " AND ";
+          passage +=
+            "FROM " +
+            (params.stopovers.split(", ")[2] || params.destination) +
+            " TO " +
+            params.destination +
+            " IS " +
+            params.time4 +
+            ". ";
+          passage +=
+            "THERE ARE " +
+            params.firstClass +
+            " PASSENGERS IN FIRST CLASS, BUSINESS CLASS " +
+            params.businessPassengers +
+            " AND ECONOMY " +
+            params.economyPassengers +
+            " PASSENGERS. ";
+          passage +=
+            "ON THE CABIN, " +
+            params.crewCount +
+            " AIR CREW MEMBERS WORK UNTIL " +
+            params.changeCrewStop +
+            ", WHERE A CREW CHANGE OCCURS. ";
+          passage +=
+            "IN " +
+            params.changeCrewStop +
+            ", " +
+            params.businessOff +
+            " BUSINESS-CLASS PASSENGERS GET OFF AND " +
+            params.businessOn +
+            " GET ON. ";
+          passage +=
+            params.economyOff +
+            " ECONOMY-CLASS PASSENGERS GET OFF AND " +
+            params.economyOn +
+            " GET ON. ";
+          passage +=
+            "IN " +
+            params.dubaiStop +
+            ", " +
+            params.dubaiFirstClassOn +
+            " NEW FIRST-CLASS PASSENGERS GET ON AND " +
+            params.dubaiBusinessOff +
+            " BUSINESS-CLASS PASSENGERS GET OFF. ";
+          passage +=
+            "THE PILOTS USE RUNWAY " + params.takeoffRunway + " FOR TAKEOFF. ";
+          passage +=
+            "WHEN REACHING " +
+            params.headingAltitude +
+            ", THEY ARE VECTORED TO TURN RIGHT HEADING " +
+            params.atcHeading +
+            " FOR INTERCEPTING THE AIRWAY AND ARE CLEARED TO CLIMB TO MAINTAIN " +
+            params.finalLevel +
+            " FT FOR THE FINAL LEVEL.";
+
+          return { passage: passage, params: params };
+        }
+
+        // ----- Question Pools -----
+        var pattern1QuestionsPool = [
+          { question: "What is the flight number?", key: "flightCode" },
+          { question: "What is the departure date?", key: "departureDate" },
+          {
+            question: "Which airports serve as the departure and destination?",
+            key: "origin_destination",
+          },
+          { question: "What is the parking bay number?", key: "gate" },
+          {
+            question: "Which taxi route did the aircraft follow?",
+            key: "taxiRoute",
+          },
+          {
+            question: "Which runway was used for departure?",
+            key: "departureRunway",
+          },
+          { question: "What type of aircraft was used?", key: "aircraftType" },
+          {
+            question: "How many people were on board (passengers and crew)?",
+            key: "totalPeople",
+          },
+          {
+            question: "What was the take-off weight (in tons)?",
+            key: "takeOffWeight",
+          },
+          {
+            question: "What ATC vector heading was given after departure?",
+            key: "atcVector",
+          },
+          {
+            question: "To which flight level did the aircraft climb?",
+            key: "flightLevel",
+          },
+          { question: "What was the departure time?", key: "departureTime" },
+          {
+            question: "Which seat did the affected passenger occupy?",
+            key: "vomitSeat",
+          },
+          { question: "Which seat did the helper occupy?", key: "doctorSeat" },
+          {
+            question: "What is the nationality of the affected passenger?",
+            key: "country",
+          },
+          {
+            question: "What is the age of the affected passenger?",
+            key: "passengerAge",
+          },
+          {
+            question: "At which flight level did the descent begin?",
+            key: "descendLevel",
+          },
+          {
+            question: "What were the wind direction and speed during landing?",
+            key: "wind",
+          },
+          {
+            question: "What was the outside temperature at the destination?",
+            key: "outsideTemp",
+          },
+          {
+            question: "What was the temperature in cargo bin #1?",
+            key: "bin1Temp",
+          },
+        ];
+        var pattern2QuestionsPool = [
+          { question: "What is the flight number?", key: "flightNumber" },
+          { question: "What is the type of aircraft?", key: "aircraftType" },
+          {
+            question:
+              "From which airport did the flight depart and what is its final destination?",
+            key: "origin_destination",
+          },
+          {
+            question: "How many cabin crew members are on board?",
+            key: "crewCount",
+          },
+          {
+            question:
+              "Which stopover cities did the aircraft land at during the flight?",
+            key: "stopovers",
+          },
+          {
+            question: "How many economy-class passengers were there initially?",
+            key: "economyPassengers",
+          },
+          {
+            question: "At which stopover did the crew change occur?",
+            key: "changeCrewStop",
+          },
+          {
+            question: "What is the runway number used for takeoff?",
+            key: "takeoffRunway",
+          },
+          {
+            question: "What is the final flight level maintained?",
+            key: "finalLevel",
+          },
+          {
+            question:
+              "How many first-class passengers were there at the final destination?",
+            key: "firstClass",
+          },
+        ];
+
+        // ----- Pattern Selection Button Handlers -----
+        $("#pattern1Btn").click(function () {
+          currentPattern = "pattern1";
+          $(this).removeClass("btn-outline-info").addClass("btn-info active");
+          $("#pattern2Btn")
+            .removeClass("btn-info active")
+            .addClass("btn-outline-info");
+        });
+        $("#pattern2Btn").click(function () {
+          currentPattern = "pattern2";
+          $(this).removeClass("btn-outline-info").addClass("btn-info active");
+          $("#pattern1Btn")
+            .removeClass("btn-info active")
+            .addClass("btn-outline-info");
+        });
+
+        // ----- Generate Test -----
+        $("#generateTestBtn").click(function () {
+          if (!currentPattern) {
+            alert("Please select a passage pattern.");
+            return;
+          }
+          var testData;
+          if (currentPattern === "pattern1") {
+            testData = generatePattern1Test();
+          } else {
+            testData = generatePattern2Test();
+          }
+          testParams = testData.params;
+          currentPassage = testData.passage;
+          // Select questions randomly from the pool (approximately 80% of available questions)
+          var questionsPool =
+            currentPattern === "pattern1"
+              ? pattern1QuestionsPool
+              : pattern2QuestionsPool;
+          var numQuestions = Math.floor(0.8 * questionsPool.length);
+          var shuffled = shuffleArray(questionsPool.slice());
+          questionMappings = shuffled.slice(0, numQuestions);
+          $("#passageContainer").html(currentPassage);
+          $("#testArea").show();
+        });
+
+        // ----- Start 3 Minutes Countdown Button -----
+        $("#startTimerBtn").click(function () {
+          $(this).prop("disabled", true).text("Started");
+          timer = setTimeout(function () {
+            $("#startPage, #testArea").hide();
+            $("#timesUpPage").show();
+          }, testDuration);
+        });
+
+        // ----- Answer Questions Button -----
+        $("#answerQuestionsBtn").click(function () {
+          $("#timesUpPage").hide();
+          $("#questionsContainer").empty();
+          questionMappings.forEach(function (q, index) {
+            var answer = "";
+            if (q.key === "origin_destination") {
+              answer =
+                currentPattern === "pattern1"
+                  ? testParams.origin + " to " + testParams.destination
+                  : testParams.origin + " TO " + testParams.destination;
+            } else if (q.key === "totalPeople") {
+              answer = testParams.totalPeople;
+            } else if (q.key === "wind") {
+              answer = testParams.wind;
+            } else {
+              answer = testParams[q.key];
+            }
+            var qDiv = $("<div class='mb-3'></div>");
+            qDiv.append(
+              "<p><strong>" + (index + 1) + ". " + q.question + "</strong></p>"
+            );
+            qDiv.append(
+              "<input type='text' class='form-control user-answer' placeholder='Your answer'>"
+            );
+            qDiv.append("<p class='answer'>Answer: " + answer + "</p>");
+            $("#questionsContainer").append(qDiv);
+          });
+          $("#questionsPage").show();
+        });
+
+        // ----- Show Answers Button -----
+        $("#showAnswersBtn").click(function () {
+          $(".answer").show();
+          // Scroll to top after showing answers
+          $("html, body").animate({ scrollTop: 0 }, "fast");
+        });
+
+        // ----- Show Passage Button on Questions Page -----
+        $("#showPassageBtn").click(function () {
+          $("#passageReview").html(currentPassage).slideDown();
+          $("html, body").animate(
+            { scrollTop: $("#passageReview").offset().top },
+            "fast"
+          );
+        });
+
+        // ----- Start New Test Button -----
+        $("#startNewTestBtn").click(function () {
+          clearTimeout(timer);
+          $("#testArea, #timesUpPage, #questionsPage").hide();
+          $("#passageContainer").empty();
+          $("#questionsContainer").empty();
+          $("#passageReview").hide().empty();
+          $("#startTimerBtn")
+            .prop("disabled", false)
+            .text("Start 3 Mins Countdown");
+          // Reset pattern buttons
+          currentPattern = null;
+          $("#pattern1Btn, #pattern2Btn")
+            .removeClass("btn-info active")
+            .addClass("btn-outline-info");
+          $("#startPage").show();
+        });
+      });
+    </script>
+  </body>
+</html>
