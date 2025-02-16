@@ -132,7 +132,7 @@
         var currentPattern = null;
         var questionMappings = [];
         var timer;
-        var testDuration = 3 * 60 * 1000; // For testing; change to 180000 for 3 minutes
+        var testDuration = 1000; // 3 minutes
 
         // ----- Utility Functions -----
         function randomInt(min, max) {
@@ -168,6 +168,10 @@
           ];
           return randomElement(airports);
         }
+        // --- Format an airport object into "CODE (CITY)" in uppercase.
+        function formatAirport(airport) {
+          return (airport.code + " (" + airport.city + ")").toUpperCase();
+        }
         // --- Generate Flight Code ---
         function generateFlightCode() {
           var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -177,7 +181,6 @@
             randomInt(100, 999)
           );
         }
-
         // --- Generate taxi route: 2-3 parts using random prefixes ---
         function generateTaxiRoute() {
           var prefixes = ["T", "C", "R", "X", "P", "E", "D", "A", "O", "V"];
@@ -244,13 +247,7 @@
           var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
           return randomElement(letters) + randomInt(1, 30);
         }
-        // --- Updated generateAirportCode(): Now use generateAirport() to return formatted string
-        function generateAirportCodeFormatted() {
-          var airport = generateAirport();
-          return airport.code + " (" + airport.city + ")";
-        }
-        // --- For internal comparisons, we may also want the airport object
-        // --- Generate Runway
+        // --- Generate runway ---
         function generateRunway() {
           var num = randomInt(1, 36);
           var letter = randomElement(["L", "R", "C"]);
@@ -289,7 +286,7 @@
           var year = randomInt(2000, 2020);
           return month + " " + day + ", " + year;
         }
-        // --- Generate flight level values (multiples of 10 from 250 to 410)
+        // --- Generate flight level array (multiples of 10 from 250 to 410) ---
         function generateFlightLevelArray() {
           var levels = [];
           for (var i = 250; i <= 410; i += 10) {
@@ -297,15 +294,15 @@
           }
           return levels;
         }
-        // --- NEW: Generate a flight level value (e.g., "FL330")
+        // --- Generate a flight level value (e.g., "FL330") ---
         function generateFlightLevelValue() {
           var levels = generateFlightLevelArray();
           return "FL" + randomElement(levels);
         }
-        // --- Generate climb and descent flight levels together.
+        // --- Generate climb and descent flight levels together ---
         function generateClimbAndDescentLevels() {
           var levels = generateFlightLevelArray();
-          var climbIndex = randomInt(1, levels.length - 1);
+          var climbIndex = randomInt(1, levels.length - 1); // not the lowest
           var climbLevel = levels[climbIndex];
           var descentIndex = randomInt(0, climbIndex - 1);
           var descentLevel = levels[descentIndex];
@@ -314,16 +311,16 @@
             descent: "FL" + descentLevel,
           };
         }
-        // --- Generate a heading (multiples of 10 from 010 to 360)
+        // --- Generate a heading (multiples of 10 from 010 to 360) ---
         function generateHeadingMultiple() {
           var heading = randomInt(1, 36) * 10;
           return heading < 100 ? "0" + heading : heading.toString();
         }
-        // --- Generate altitude for non-FL altitudes (multiples of 1000 ft, minimum 3000 ft)
+        // --- Generate altitude for non-FL altitudes (multiples of 1000 ft, minimum 3000 ft) ---
         function generateAltitude() {
           return randomInt(3, 10) * 1000;
         }
-        // --- Generate flight time duration in multiples of 5 minutes.
+        // --- Generate flight time duration in multiples of 5 minutes ---
         function generateDuration() {
           var hrs = randomInt(1, 10);
           var minutesArray = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
@@ -355,7 +352,6 @@
             "BEIJING",
             "SHANGHAI",
           ];
-          // Exclude originCity and destinationCity (case-insensitive)
           cities = cities.filter(function (city) {
             return (
               city.toUpperCase() !== originCity.toUpperCase() &&
@@ -490,97 +486,90 @@
           ];
           params.descentReason = randomElement(reasons);
 
-          var passage = "";
-          passage +=
-            "This is flight " +
-            params.flightCode +
-            " at parking bay " +
-            params.gate +
-            " from " +
-            params.origin +
-            " to " +
-            params.destination +
-            ", taxi out via " +
-            params.taxiRoute +
-            " for taking off on runway " +
-            params.departureRunway +
-            ". ";
-          passage +=
-            "The type of aircraft is " +
-            params.aircraftType +
-            " with " +
-            params.bcPassengers +
-            " passengers in business class, " +
-            params.economyPassengers +
-            " in economy class, and " +
-            params.crewCount +
-            " crew members. ";
-          passage +=
-            "The take-off weight was " +
-            params.takeOffWeight +
-            " tons.<br><br>";
-          passage +=
-            "Departure time was " +
-            params.departureTime +
-            " on " +
-            params.departureDate +
-            ". ";
-          passage +=
-            "After departure the ATC vector heading was " +
-            params.atcVector +
-            ", and the aircraft climbed to " +
-            params.flightLevel +
-            ". ";
-          passage +=
-            "During cruise, the passenger in seat " +
-            params.vomitSeat +
+          // Paraphrased template options for Pattern #1 opening sentence:
+          var openingTemplates = [
+            "This is flight {flightCode} at parking bay {gate} from {origin} to {destination}, taxiing via {taxiRoute} for takeoff from runway {departureRunway}.",
+            "Flight {flightCode}, parked at bay {gate}, departs from {origin} to {destination}. It will taxi on {taxiRoute} and take off from runway {departureRunway}.",
+            "At gate {gate}, flight {flightCode} is set to leave {origin} for {destination}. It taxis via {taxiRoute} and uses runway {departureRunway} for takeoff.",
+          ];
+          var opening = randomElement(openingTemplates)
+            .replace("{flightCode}", params.flightCode)
+            .replace("{gate}", params.gate)
+            .replace("{origin}", params.origin)
+            .replace("{destination}", params.destination)
+            .replace("{taxiRoute}", params.taxiRoute)
+            .replace("{departureRunway}", params.departureRunway);
+
+          // Additional templates for subsequent sentences:
+          var detailsTemplates = [
+            "The aircraft, a {aircraftType}, carries {bcPassengers} business-class passengers, {economyPassengers} economy-class passengers, and {crewCount} crew members, with a take-off weight of {takeOffWeight} tons.",
+            "Operating as a {aircraftType}, it has {bcPassengers} business, {economyPassengers} economy passengers and {crewCount} crew, and weighs {takeOffWeight} tons at takeoff.",
+          ];
+          var details = randomElement(detailsTemplates)
+            .replace("{aircraftType}", params.aircraftType)
+            .replace("{bcPassengers}", params.bcPassengers)
+            .replace("{economyPassengers}", params.economyPassengers)
+            .replace("{crewCount}", params.crewCount)
+            .replace("{takeOffWeight}", params.takeOffWeight);
+
+          var timeTemplate =
+            "Departure was at {departureTime} on {departureDate}. After departure, the ATC vector was {atcVector} and the aircraft climbed to {flightLevel}.";
+          var timeDetails = timeTemplate
+            .replace("{departureTime}", params.departureTime)
+            .replace("{departureDate}", params.departureDate)
+            .replace("{atcVector}", params.atcVector)
+            .replace("{flightLevel}", params.flightLevel);
+
+          var cruiseTemplate =
+            "During cruise, the passenger in seat {vomitSeat} {symptom}, while the crew member in seat {crewSeat} noticed and called for help. The {helperOccupation}, seated at {doctorSeat}, {helperAction} for the {country} passenger.";
+          var cruiseDetails = cruiseTemplate
+            .replace("{vomitSeat}", params.vomitSeat)
+            .replace("{symptom}", params.symptom)
+            .replace("{crewSeat}", params.crewSeat)
+            .replace("{helperOccupation}", params.helperOccupation)
+            .replace("{doctorSeat}", params.doctorSeat)
+            .replace("{helperAction}", params.helperAction)
+            .replace("{country}", params.country);
+
+          var passengerTemplate =
+            "The passenger was a {passengerGender} aged {passengerAge}.";
+          var passengerDetails = passengerTemplate
+            .replace("{passengerGender}", params.passengerGender)
+            .replace("{passengerAge}", params.passengerAge);
+
+          var landingTemplate =
+            "When the aircraft passed {passingCountry}, the ATC instructed a descent to {descendLevel} {descentReason}. It landed at {landingTime} on runway {landingRunway}, with winds of {wind}.";
+          var landingDetails = landingTemplate
+            .replace("{passingCountry}", params.passingCountry)
+            .replace("{descendLevel}", params.descendLevel)
+            .replace("{descentReason}", params.descentReason)
+            .replace("{landingTime}", params.landingTime)
+            .replace("{landingRunway}", params.landingRunway)
+            .replace("{wind}", params.wind);
+
+          var postLandingTemplate =
+            "The aircraft then parked at gate {parkingGate} and the outside temperature was {outsideTemp}°C. Upon opening the cargo door, bin #1 contained {bin1Content} and bin #2 contained {bin2Content}. The temperature in bin #1 was {bin1Temp}°C.";
+          var postLandingDetails = postLandingTemplate
+            .replace("{parkingGate}", params.parkingGate)
+            .replace("{outsideTemp}", params.outsideTemp)
+            .replace("{bin1Content}", params.bin1Content)
+            .replace("{bin2Content}", params.bin2Content)
+            .replace("{bin1Temp}", params.bin1Temp);
+
+          passage =
+            opening +
             " " +
-            params.symptom +
-            " while the crew member in seat " +
-            params.crewSeat +
-            " noticed and called for help. ";
-          passage +=
-            "The " +
-            params.helperOccupation +
-            ", seated at " +
-            params.doctorSeat +
-            ", " +
-            params.helperAction +
-            " for the " +
-            params.country +
-            " passenger who was feeling sick. ";
-          passage +=
-            "The passenger was a " +
-            params.passengerGender +
-            " aged " +
-            params.passengerAge +
-            ".<br><br>";
-          passage +=
-            "When the aircraft passed " +
-            params.passingCountry +
-            ", the control ATC instructed a descent to " +
-            params.descendLevel +
+            details +
+            "<br><br>" +
+            timeDetails +
             " " +
-            params.descentReason +
-            ". ";
-          passage +=
-            "The flight landed at " +
-            params.landingTime +
-            " local time on runway " +
-            params.landingRunway +
-            ". ";
-          passage += "The wind was " + params.wind + ". ";
-          passage +=
-            "The aircraft then parked at gate " + params.parkingGate + ". ";
-          passage +=
-            "The outside temperature was " + params.outsideTemp + "°C. ";
-          passage +=
-            "Upon opening the cargo door, bin #1 contained " +
-            params.bin1Content +
-            " and bin #2 contained " +
-            params.bin2Content +
-            ". ";
-          passage += "The temperature in bin #1 is " + params.bin1Temp + "°C.";
+            cruiseDetails +
+            " " +
+            passengerDetails +
+            "<br><br>" +
+            landingDetails +
+            " " +
+            postLandingDetails;
 
           return { passage: passage, params: params };
         }
@@ -593,20 +582,8 @@
           while (destinationObj.code === originObj.code) {
             destinationObj = generateAirport();
           }
-          // Format origin and destination as "CODE (CITY)" and convert to uppercase.
-          params.origin = (
-            originObj.code +
-            " (" +
-            originObj.city +
-            ")"
-          ).toUpperCase();
-          params.destination = (
-            destinationObj.code +
-            " (" +
-            destinationObj.city +
-            ")"
-          ).toUpperCase();
-          // For stopovers, exclude the real city names (use the uppercase version for comparison if needed)
+          params.origin = formatAirport(originObj);
+          params.destination = formatAirport(destinationObj);
           params.stopovers = generateStopoversExcluding(
             originObj.city,
             destinationObj.city
@@ -637,108 +614,134 @@
           params.finalLevel = generateFlightLevelValue();
           params.origin_destination =
             params.origin + " TO " + params.destination;
-          // Set aircraft type (in uppercase)
           params.aircraftType = generateAircraftType().toUpperCase();
-          // Set flight number before using it.
           params.flightNumber = "QF " + randomInt(100, 999);
-          var passage = "";
-          passage += "THIS IS FLIGHT " + params.flightNumber + ". ";
-          passage +=
-            "TYPE OF THE AIRCRAFT IS " +
-            params.aircraftType +
-            ", FROM " +
-            params.origin +
-            " TO " +
-            params.destination +
-            ". ";
-          passage +=
+
+          // Paraphrased templates for Pattern #2:
+          var openingTemplates = [
+            "THIS IS FLIGHT {flightNumber}.",
+            "Flight {flightNumber} is now in service.",
+            "Introducing flight {flightNumber}.",
+          ];
+          var opening = randomElement(openingTemplates).replace(
+            "{flightNumber}",
+            params.flightNumber
+          );
+
+          var mainInfoTemplates = [
+            "TYPE OF THE AIRCRAFT IS {aircraftType}, FROM {origin} TO {destination}.",
+            "THE AIRCRAFT, A {aircraftType}, DEPARTS FROM {origin} AND IS HEADED TO {destination}.",
+            "FLIGHT {flightNumber} OPERATES A {aircraftType} FROM {origin} TO {destination}.",
+          ];
+          var mainInfo = randomElement(mainInfoTemplates)
+            .replace("{aircraftType}", params.aircraftType)
+            .replace("{origin}", params.origin)
+            .replace("{destination}", params.destination)
+            .replace("{flightNumber}", params.flightNumber);
+
+          var routeInfo =
             "BETWEEN ROUTE, THIS FLIGHT WILL MAKE LANDINGS FOR CHANGING PASSENGERS, AIR CREWS AND REFUELING AT " +
             params.stopovers +
-            ". ";
-          passage +=
+            ".";
+
+          var flightTimes =
             "FLIGHT TIME FROM " +
             params.origin +
             " TO " +
             params.stopovers.split(", ")[0] +
             " IS " +
             params.time1 +
-            ", ";
-          passage +=
-            "FROM " +
+            ", FROM " +
             params.stopovers.split(", ")[0] +
             " TO " +
             (params.stopovers.split(", ")[1] || params.destination) +
             " IS " +
             params.time2 +
-            ", ";
-          passage +=
-            "FROM " +
+            ", FROM " +
             (params.stopovers.split(", ")[1] || params.destination) +
             " TO " +
             (params.stopovers.split(", ")[2] || params.destination) +
             " IS " +
             params.time3 +
-            " AND ";
-          passage +=
-            "FROM " +
+            " AND FROM " +
             (params.stopovers.split(", ")[2] || params.destination) +
             " TO " +
             params.destination +
             " IS " +
             params.time4 +
-            ". ";
-          passage +=
+            ".";
+
+          var passengerInfo =
             "THERE ARE " +
             params.firstClass +
             " PASSENGERS IN FIRST CLASS, BUSINESS CLASS " +
             params.businessPassengers +
             " AND ECONOMY " +
             params.economyPassengers +
-            " PASSENGERS. ";
-          passage +=
+            " PASSENGERS.";
+
+          var crewInfo =
             "ON THE CABIN, " +
             params.crewCount +
             " AIR CREW MEMBERS WORK UNTIL " +
             params.changeCrewStop +
-            ", WHERE A CREW CHANGE OCCURS. ";
-          passage +=
-            "IN " +
+            ", WHERE A CREW CHANGE OCCURS. In " +
             params.changeCrewStop +
             ", " +
             params.businessOff +
             " BUSINESS-CLASS PASSENGERS GET OFF AND " +
             params.businessOn +
-            " GET ON. ";
-          passage +=
+            " GET ON, while " +
             params.economyOff +
             " ECONOMY-CLASS PASSENGERS GET OFF AND " +
             params.economyOn +
-            " GET ON. ";
-          passage +=
+            " GET ON.";
+
+          var dubaiInfo =
             "IN " +
             params.dubaiStop +
             ", " +
             params.dubaiFirstClassOn +
             " NEW FIRST-CLASS PASSENGERS GET ON AND " +
             params.dubaiBusinessOff +
-            " BUSINESS-CLASS PASSENGERS GET OFF. ";
-          passage +=
-            "THE PILOTS USE RUNWAY " + params.takeoffRunway + " FOR TAKEOFF. ";
-          passage +=
+            " BUSINESS-CLASS PASSENGERS GET OFF.";
+
+          var takeoffInfo =
+            "THE PILOTS USE RUNWAY " + params.takeoffRunway + " FOR TAKEOFF.";
+
+          var vectorInfo =
             "WHEN REACHING " +
             params.headingAltitude +
             " THEY ARE VECTORED TO TURN RIGHT HEADING " +
             params.atcHeading +
-            " FOR INTERCEPTING THE AIRWAY ";
-          passage +=
-            "AND ARE CLEARED TO CLIMB TO MAINTAIN " +
+            " FOR INTERCEPTING THE AIRWAY AND ARE CLEARED TO CLIMB TO MAINTAIN " +
             params.finalLevel +
             " FOR THE FINAL LEVEL.";
+
+          var passage =
+            opening +
+            " " +
+            mainInfo +
+            " " +
+            routeInfo +
+            " " +
+            flightTimes +
+            " " +
+            passengerInfo +
+            " " +
+            crewInfo +
+            " " +
+            dubaiInfo +
+            " " +
+            takeoffInfo +
+            " " +
+            vectorInfo;
           params.finalFirstClass = params.firstClass + params.dubaiFirstClassOn;
           return { passage: passage, params: params };
         }
 
         // ----- Question Pools -----
+        // For Pattern #1, we now add questions for parameters that were not previously covered:
         var pattern1QuestionsPool = [
           { question: "What is the flight number?", key: "flightCode" },
           { question: "What is the departure date?", key: "departureDate" },
@@ -796,6 +799,15 @@
             key: "descendLevel",
           },
           {
+            question: "What was the descent reason given by ATC?",
+            key: "descentReason",
+          },
+          { question: "What was the landing time?", key: "landingTime" },
+          {
+            question: "Which runway was used for landing?",
+            key: "landingRunway",
+          },
+          {
             question: "What were the wind direction and speed during landing?",
             key: "wind",
           },
@@ -803,11 +815,10 @@
             question: "What was the outside temperature at the destination?",
             key: "outsideTemp",
           },
-          {
-            question: "What was the temperature in cargo bin #1?",
-            key: "bin1Temp",
-          },
+          { question: "What did cargo bin #1 contain?", key: "bin1Content" },
+          { question: "What did cargo bin #2 contain?", key: "bin2Content" },
         ];
+        // For Pattern #2, we add extra questions:
         var pattern2QuestionsPool = [
           { question: "What is the flight number?", key: "flightNumber" },
           { question: "What is the type of aircraft?", key: "aircraftType" },
@@ -821,13 +832,17 @@
             key: "crewCount",
           },
           {
-            question:
-              "Which stopover cities did the aircraft land at during the flight?",
+            question: "Which stopover cities did the aircraft land at?",
             key: "stopovers",
           },
           {
             question: "How many economy-class passengers were there initially?",
             key: "economyPassengers",
+          },
+          {
+            question:
+              "How many business-class passengers were there initially?",
+            key: "businessPassengers",
           },
           {
             question: "At which stopover did the crew change occur?",
@@ -840,6 +855,11 @@
           {
             question: "What is the final flight level maintained?",
             key: "finalLevel",
+          },
+          { question: "What is the heading altitude?", key: "headingAltitude" },
+          {
+            question: "What is the ATC heading for intercepting the airway?",
+            key: "atcHeading",
           },
           {
             question:
