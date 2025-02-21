@@ -931,7 +931,7 @@
             currentPattern === "pattern1"
               ? pattern1QuestionsPool
               : pattern2QuestionsPool;
-          var numQuestions = Math.floor(0.9 * questionsPool.length);
+          var numQuestions = Math.floor(0.7 * questionsPool.length);
           var shuffled = shuffleArray(questionsPool.slice());
           questionMappings = shuffled.slice(0, numQuestions);
           $("#passageContainer").html(currentPassage);
