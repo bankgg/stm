@@ -380,9 +380,13 @@
           // Use generateAirport() to get origin and destination objects.
           var originObj = generateAirport();
           var destinationObj = generateAirport();
-          while (destinationObj.code === originObj.code) {
+          while (
+            destinationObj.code === originObj.code ||
+            destinationObj.city === originObj.city
+          ) {
             destinationObj = generateAirport();
           }
+
           params.origin = originObj.code + " (" + originObj.city + ")";
           params.destination =
             destinationObj.code + " (" + destinationObj.city + ")";
@@ -422,6 +426,7 @@
           params.landingRunway = generateRunway();
           params.windDirection = generateHeadingMultiple();
           params.windSpeed = randomInt(5, 20);
+          // Generate parkingGate separately for the post landing section.
           params.parkingGate = generateGate();
           params.outsideTemp = randomInt(10, 30);
           params.bin1Content = randomElement([
@@ -489,7 +494,7 @@
           // Paraphrased template options for Pattern #1 opening sentence:
           var openingTemplates = [
             "This is flight {flightCode} at parking bay {gate} from {origin} to {destination}, taxiing via {taxiRoute} for takeoff from runway {departureRunway}.",
-            "Flight {flightCode}, parked at bay {gate}, departs from {origin} to {destination}. It will taxi on {taxiRoute} and take off from runway {departureRunway}.",
+            "Flight {flightCode}, parked at bay {gate}, departs from {origin} and is headed to {destination}. It will taxi on {taxiRoute} and take off from runway {departureRunway}.",
             "At gate {gate}, flight {flightCode} is set to leave {origin} for {destination}. It taxis via {taxiRoute} and uses runway {departureRunway} for takeoff.",
           ];
           var opening = randomElement(openingTemplates)
@@ -500,7 +505,6 @@
             .replace("{taxiRoute}", params.taxiRoute)
             .replace("{departureRunway}", params.departureRunway);
 
-          // Additional templates for subsequent sentences:
           var detailsTemplates = [
             "The aircraft, a {aircraftType}, carries {bcPassengers} business-class passengers, {economyPassengers} economy-class passengers, and {crewCount} crew members, with a take-off weight of {takeOffWeight} tons.",
             "Operating as a {aircraftType}, it has {bcPassengers} business, {economyPassengers} economy passengers and {crewCount} crew, and weighs {takeOffWeight} tons at takeoff.",
@@ -547,6 +551,7 @@
             .replace("{landingRunway}", params.landingRunway)
             .replace("{wind}", params.wind);
 
+          // Updated post landing template now uses parkingGate.
           var postLandingTemplate =
             "The aircraft then parked at gate {parkingGate} and the outside temperature was {outsideTemp}°C. Upon opening the cargo door, bin #1 contained {bin1Content} and bin #2 contained {bin2Content}. The temperature in bin #1 was {bin1Temp}°C.";
           var postLandingDetails = postLandingTemplate
@@ -556,7 +561,7 @@
             .replace("{bin2Content}", params.bin2Content)
             .replace("{bin1Temp}", params.bin1Temp);
 
-          passage =
+          var passage =
             opening +
             " " +
             details +
@@ -570,7 +575,6 @@
             landingDetails +
             " " +
             postLandingDetails;
-
           return { passage: passage, params: params };
         }
 
@@ -579,7 +583,11 @@
           var params = {};
           var originObj = generateAirport();
           var destinationObj = generateAirport();
-          while (destinationObj.code === originObj.code) {
+          // Ensure that both code and city differ.
+          while (
+            destinationObj.code === originObj.code ||
+            destinationObj.city === originObj.city
+          ) {
             destinationObj = generateAirport();
           }
           params.origin = formatAirport(originObj);
@@ -602,12 +610,10 @@
           params.economyOff = randomInt(50, 150);
           params.economyOn = randomInt(50, 150);
           var stopsArray = params.stopovers.split(", ");
-          params.dubaiStop =
-            stopsArray.indexOf("DUBAI") !== -1
-              ? "DUBAI"
-              : randomElement(stopsArray);
-          params.dubaiFirstClassOn = randomInt(1, 10);
-          params.dubaiBusinessOff = randomInt(1, 10);
+          // Pick a random stopover; note: it's not fixed to any specific city.
+          params.randomStopover = randomElement(stopsArray);
+          params.randomFirstClassOn = randomInt(1, 10);
+          params.randomBusinessOff = randomInt(1, 10);
           params.takeoffRunway = generateRunway();
           params.headingAltitude = generateAltitude();
           params.atcHeading = generateHeadingMultiple();
@@ -620,8 +626,8 @@
           // Paraphrased templates for Pattern #2:
           var openingTemplates = [
             "THIS IS FLIGHT {flightNumber}.",
-            "Flight {flightNumber} is now in service.",
-            "Introducing flight {flightNumber}.",
+            "FLIGHT {flightNumber} IS NOW IN SERVICE.",
+            "INTRODUCING FLIGHT {flightNumber}.",
           ];
           var opening = randomElement(openingTemplates).replace(
             "{flightNumber}",
@@ -685,25 +691,25 @@
             params.crewCount +
             " AIR CREW MEMBERS WORK UNTIL " +
             params.changeCrewStop +
-            ", WHERE A CREW CHANGE OCCURS. In " +
+            ", WHERE A CREW CHANGE OCCURS. IN " +
             params.changeCrewStop +
             ", " +
             params.businessOff +
             " BUSINESS-CLASS PASSENGERS GET OFF AND " +
             params.businessOn +
-            " GET ON, while " +
+            " GET ON, WHILE " +
             params.economyOff +
             " ECONOMY-CLASS PASSENGERS GET OFF AND " +
             params.economyOn +
             " GET ON.";
 
-          var dubaiInfo =
-            "IN " +
-            params.dubaiStop +
+          var stopoverInfo =
+            "AT " +
+            params.randomStopover +
             ", " +
-            params.dubaiFirstClassOn +
+            params.randomFirstClassOn +
             " NEW FIRST-CLASS PASSENGERS GET ON AND " +
-            params.dubaiBusinessOff +
+            params.randomBusinessOff +
             " BUSINESS-CLASS PASSENGERS GET OFF.";
 
           var takeoffInfo =
@@ -731,17 +737,22 @@
             " " +
             crewInfo +
             " " +
-            dubaiInfo +
+            stopoverInfo +
             " " +
             takeoffInfo +
             " " +
             vectorInfo;
-          params.finalFirstClass = params.firstClass + params.dubaiFirstClassOn;
+
+          // Ensure entire passage is in UPPERCASE.
+          passage = passage.toUpperCase();
+
+          params.finalFirstClass =
+            params.firstClass + params.randomFirstClassOn;
           return { passage: passage, params: params };
         }
 
         // ----- Question Pools -----
-        // For Pattern #1, we now add questions for parameters that were not previously covered:
+        // Pattern #1 Question Pool (Updated)
         var pattern1QuestionsPool = [
           { question: "What is the flight number?", key: "flightCode" },
           { question: "What is the departure date?", key: "departureDate" },
@@ -817,53 +828,71 @@
           },
           { question: "What did cargo bin #1 contain?", key: "bin1Content" },
           { question: "What did cargo bin #2 contain?", key: "bin2Content" },
+          // Newly added questions:
+          {
+            question: "What symptom did the affected passenger exhibit?",
+            key: "symptom",
+          },
+          {
+            question: "What was the occupation of the helper?",
+            key: "helperOccupation",
+          },
+          { question: "What action did the helper take?", key: "helperAction" },
+          {
+            question: "What is the temperature in cargo bin #1?",
+            key: "bin1Temp",
+          },
+          { question: "What is the parking gate number?", key: "parkingGate" },
         ];
-        // For Pattern #2, we add extra questions:
+        // Pattern #2 Question Pool (remains mostly unchanged)
         var pattern2QuestionsPool = [
-          { question: "What is the flight number?", key: "flightNumber" },
-          { question: "What is the type of aircraft?", key: "aircraftType" },
+          { question: "WHAT IS THE FLIGHT NUMBER?", key: "flightNumber" },
+          { question: "WHAT IS THE TYPE OF AIRCRAFT?", key: "aircraftType" },
           {
             question:
-              "From which airport did the flight depart and what is its final destination?",
+              "FROM WHICH AIRPORT DID THE FLIGHT DEPART AND WHAT IS ITS FINAL DESTINATION?",
             key: "origin_destination",
           },
           {
-            question: "How many cabin crew members are on board?",
+            question: "HOW MANY CABIN CREW MEMBERS ARE ON BOARD?",
             key: "crewCount",
           },
           {
-            question: "Which stopover cities did the aircraft land at?",
+            question: "WHICH STOPOVER CITIES DID THE AIRCRAFT LAND AT?",
             key: "stopovers",
           },
           {
-            question: "How many economy-class passengers were there initially?",
+            question: "HOW MANY ECONOMY-CLASS PASSENGERS WERE THERE INITIALLY?",
             key: "economyPassengers",
           },
           {
             question:
-              "How many business-class passengers were there initially?",
+              "HOW MANY BUSINESS-CLASS PASSENGERS WERE THERE INITIALLY?",
             key: "businessPassengers",
           },
           {
-            question: "At which stopover did the crew change occur?",
+            question: "AT WHICH STOPOVER DID THE CREW CHANGE OCCUR?",
             key: "changeCrewStop",
           },
           {
-            question: "What is the runway number used for takeoff?",
+            question: "WHAT IS THE RUNWAY NUMBER USED FOR TAKEOFF?",
             key: "takeoffRunway",
           },
           {
-            question: "What is the final flight level maintained?",
+            question: "WHAT IS THE FINAL FLIGHT LEVEL MAINTAINED?",
             key: "finalLevel",
           },
-          { question: "What is the initial altitude before vectored?", key: "headingAltitude" },
           {
-            question: "What is the ATC heading for intercepting the airway?",
+            question: "WHAT IS THE INITIAL ALTITUDE BEFORE VECTORED?",
+            key: "headingAltitude",
+          },
+          {
+            question: "WHAT IS HEADING THE ATC ASKED THE PILOTS TO INTERCEPT THE AIRWAY?",
             key: "atcHeading",
           },
           {
             question:
-              "How many first-class passengers were there at the final destination?",
+              "HOW MANY FIRST-CLASS PASSENGERS WERE THERE AT THE FINAL DESTINATION?",
             key: "finalFirstClass",
           },
         ];
